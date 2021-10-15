@@ -1,0 +1,147 @@
+Nume: Dragne Lavinia-Stefana
+Grupa: 324 CA
+
+				PROTOCOALE DE COMUNICATIE
+				      - Tema #3 - 
+			Client Web. Comunicaţie cu REST API
+
+
+# Continutul proiectului este urmatorul:
+	
+	- helpers.h, buffer.h, requests.h, utils.h, prompts.h, client.h
+
+	- client.c, requests.c, prompts.c, utils.c, buffer.c, helpers.c
+	
+	- Makefile 
+
+	- acest fisier README.
+
+# Descrierea solutiei:
+	
+	Am pornit de la implementarea din laboratorul 10, pe care am si folosit-o ca si schelet.
+Am preluat din ea fisierele buffer.c, helpers.c si requests.c, alaturi de headerele lor. Am modificat:
+
+	**In fisierul requests.c** : Functia de compute_get_request primeste parametrul type, care
+poate contine mesajul 'GET' respectiv 'DELETE', in functie de comanda dorita.
+				     Functiile de compute_get_request si compute_post_request
+primesc ca si parametru si tokenul jwt, iar in cazul in care acesta nu este NULL, este adaugat in 
+header-ul Authorization.
+
+	Request-uri : Fisierele request.c si request.h contin implementarile pentru cele 3 tipuri
+de request-uri folosite. Pentru 'DELETE' si 'GET' folosesc aceeasi functie si anume, 
+compute_get_request. In aceasta, completez informatiile propriu zise si cele despre headere, host,
+url si cookies. 
+	
+	**Utilizarea bibliotecii de parsare JSON**: Am folosit biblioteca parson, disponibila
+aici: https://github.com/kgabis/parson, deoarece am ales sa implementez tema in C. Mod de utilizare:
+Declar un obiect de tip *JSON_Object* si un *JSON_Value* corespunzator si completez campurile
+necesare ((title, author, genre, publisher, page_count) / (username, password)). Convertesc
+obiectul intr-un string si il copiez in msg_to_send, pe care il transmit ulterior server-ului,
+prin functia de manage_msg_post.
+
+	**Comenzi**: In client.c, verific comanda citita de la tastatura si in functie de aceasta,
+trimit mesaj la server, primesc raspuns si il afisez. Prompt-urile pentru comenzile de
+register, login, add_book si delete_book sunt oferite prin intermediul fisierului **prompts.c**, ce
+contine o functie pentru fiecare tip de prompt. Acestea afiseaza un mesaj pe ecran si citesc, cu
+ajutorul functiei fgets, informatia de la user.
+		     Pentru fiecare comanda primita de la user, informatia este parsata si retinuta
+cu ajutorul functiei parse_json_(nume_comanda)(ex: parse_json_register). Mesajul este transmis
+ulterior, catre server, prin functia manage_msg_post. Functia **manage_msg_post** se foloseste de
+compute_post_request pentru a crea mesajul corespunzator, pe care il trimite la server. Raspunsul
+primit este verificat in caz de eroare (se cauta cu strstr dupa string-ul "error") si in caz afirmativ
+se afiseaza eroarea primita si se seteaza flag-ul de error ca si true, pentru oprirea functiei.
+In caz de primire a raspunsului de la server cu succes, in functie de tipul comenzii, se memoreaza
+cookie-ul. In functiile de manage_msg_post si get_msg se deschide conexiunea cu serverul.
+
+		      **Register**: Se folosesc functiile de prompt_for_register,
+parse_json_register si manage_msg_post si in caz de succes se afiseaza mesajul 
+"Register successfully!".
+
+		      **Login** : Se verifica existenta unui cookie si in caz afirmativ se afiseaza
+mesajul: _"Someone already connected!"_. Altfel, se creaza prompt-ul pentru user, cu functia
+prompt_for_register si mesajul, cu ajutorul functiei parse_json_register, care se trimite catre
+server, prin functia manage_msg_post. In caz de succes, se afiseaza mesajul _"Login successfully!"_ si
+se memoreaza cookie-ul. 
+
+		     **Enter_library**: Se verifica existenta cookie-ului si in cazul in care acesta
+lipseste se afiseaza mesajul: _"You are not connected!"_. Altfel, se foloseste functia get_msg
+pentru a crea mesajul ce trebuie trimis server-ului si a memora token-ul jwt, primit ca si raspuns.
+Token-ul este parsat, folosind functia strstr in mesajul primit, cautandu-se dupa string-ul "eyJ".
+Este tratat si cazul de eroare, afisandu-se eroarea primita. In caz de succes, se afiseaza:
+_"You have access to the library!"_.
+
+		     **Get_books**: Se verifica existenta token-ului si in caz negativ se afiseaza
+_You don't have acces!_. Altfel, se foloseste functia get_msg care dupa ce primeste mesajul de la
+server, il parseaza cu strchr si il afiseaza.
+
+		     **Get_book**: Se verifica existenta token-ului si in caz negativ se afiseaza
+_You don't have acces!_. Altfel, se creaza un prompt pentru id, folosind prompt_for_id, se
+concateneaza id-ul la ruta de acces si se foloseste, in mod analog, functia get_msg.
+
+		     **Add_book**: Se verifica existenta token-ului si in caz negativ se afiseaza
+_You don't have acces!_. Se creaza un prompt pentru user prin prompt_for_add, se tine cont ca
+numarul de pagini trebuie sa fie int si in caz de introducere a datelor gresit se afiseaza:
+_"Number of pages not number!"_. Se folosesc functiile parse_json_add si manage_msg_post pentru
+a trimite mesajul catre server. In caz de succes se afiseaza: _"Adding book was successfully!"_.
+
+		      **Delete_book**:  Se verifica existenta token-ului si in caz negativ se afiseaza
+_You don't have acces!_. Se creaza un prompt pentru id-ul cartii, prin prompt_for_id si se adauga
+la ruta de acces. Prin functia get_msg se trimite mesaj server-ului. In caz id invalid se afiseaza
+eroarea primita de la server, altfel se afiseaza _"Book deleted successfully!"_.
+
+		      **Logout**: Se verifica existenta cookie-ului si in caz negativ se afiseaza
+_"You aren't logged in!"_. Se trimite mesaj catre server si in caz de succes se afiseaza:
+_"Logout successfully!"_. Se reseteaza cookie-ul si token-ul jwt.
+
+		      **Exit**: Se incheie programul si se elibereaz memoria.
+
+	
+	Daca numele comenzii este introdus gresit se afiseaza: _"Wrong command!"_.
+
+# Flow-ul
+In main se citeste cate o comanda si se apeleaza functia corespunzatoare ei.
+
+# Dificultati aparute si feedback
+-> Am primit de multe ori mesajul "Too many requests" care ma impiedica sa testez cat de repede mi-as
+fi dorit eu.
+-> Faptul ca nu a existat un checker sau posibilitatea incarcarii pe vmchecker a ingreunat testarea.
+-> Nu este clar precizat ce mesaje trebuie afisate.
+-> Per total, a fost o tema cu nivel mediu de dificultate, din punctul meu de vedere, destul de clar
+enuntata si explicata (cu foarte putine scapari in enunt), care mi-a oferit o destul de mare
+libertate in implementare.
+
+#Referinte:
+Laborator 10: https://ocw.cs.pub.ro/courses/pc/laboratoare/10 (solutia - submisie incarcata pe Moodle)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
